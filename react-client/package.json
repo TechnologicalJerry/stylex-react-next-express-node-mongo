@@ -9,6 +9,9 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@stylexjs/open-props": "^0.11.1",
+    "@stylexjs/stylex": "^0.18.1",
+    "@stylexswc/nextjs-plugin": "^0.15.0",
     "next": "16.1.6",
     "react": "19.2.3",
     "react-dom": "19.2.3"
