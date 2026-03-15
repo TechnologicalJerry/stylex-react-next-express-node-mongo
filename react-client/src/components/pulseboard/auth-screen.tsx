@@ -2,7 +2,7 @@
 
 import * as stylex from "@stylexjs/stylex";
 import { FormEvent, useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { AuthForm } from "./auth-form";
 import { PulseboardShell } from "./shell";
 import { styles } from "./styles";
@@ -57,13 +57,13 @@ const screenConfig: Record<
   },
 };
 
-export function AuthScreen({ mode }: { mode: Mode }) {
+export function AuthScreen(props: { mode: Mode; initialNotice?: string }) {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const session = useStoredSessionSnapshot();
+  const mode = props.mode;
   const defaultNotice =
-    searchParams.get("notice") ??
-    (mode === "forgot-password"
+    props.initialNotice ??
+    (props.mode === "forgot-password"
       ? "Enter your email and we will send reset instructions."
       : "Use any valid email and password to try the auth flow.");
   const [notice, setNotice] = useState(defaultNotice);
@@ -93,7 +93,7 @@ export function AuthScreen({ mode }: { mode: Mode }) {
         return;
       }
 
-      if (mode === "signup") {
+      if (props.mode === "signup") {
         const payload: SignupPayload = {
           name: String(formData.get("name") ?? ""),
           email: String(formData.get("email") ?? ""),
