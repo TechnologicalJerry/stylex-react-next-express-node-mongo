@@ -1,5 +1,9 @@
 import { AuthScreen } from "@/components/pulseboard/auth-screen";
 
-export default function LoginPage() {
-  return <AuthScreen mode="login" />;
+export default async function LoginPage(props: {
+  searchParams: Promise<{ notice?: string }>;
+}) {
+  const searchParams = await props.searchParams;
+
+  return <AuthScreen mode="login" initialNotice={searchParams.notice} />;
 }
