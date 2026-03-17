@@ -1,38 +1,59 @@
-import { env } from './config/env.js';
-import { buildApp, closeApp } from './app.js';
+import express, { Request, Response } from "express";
+import cors from "cors";
+import dotenv from "dotenv";
+import config from "config";
+import responseTime from "response-time";
+import connect from "./utils/connect";
+import logger from "./utils/logger";
+import routes from "./routes";
+import deserializeUser from "./middleware/deserializeUser";
+import { restResponseTimeHistogram, startMetricsServer } from "./utils/metrics";
+import swaggerDocs from "./utils/swagger";
 
-async function start() {
-  const app = await buildApp();
-  const server = app.listen(env.PORT, env.HOST, () => {
-    console.info(`Server listening at http://${env.HOST}:${env.PORT}`);
-  });
+dotenv.config();
 
-  const shutdown = async (signal: string) => {
-    console.info(`Received ${signal}, shutting down`);
+const port = config.get<number>("port");
 
-    server.close(async (error) => {
-      if (error) {
-        console.error(error);
-        process.exit(1);
-      }
+const server = express();
 
-      try {
-        await closeApp(app);
-        process.exit(0);
-      } catch (shutdownError) {
-        console.error(shutdownError);
-        process.exit(1);
-      }
-    });
-  };
+server.use(
+  cors({
+    origin: ["http://localhost:3000", "http://127.0.0.1:3000"],
+    credentials: true,
+  })
+);
 
-  process.on('SIGINT', () => {
-    void shutdown('SIGINT');
-  });
+server.use(express.json());
 
-  process.on('SIGTERM', () => {
-    void shutdown('SIGTERM');
-  });
-}
+server.use(deserializeUser);
 
-void start();
+server.use(
+  responseTime((req: Request, res: Response, time: number) => {
+    if (req?.route?.path) {
+      restResponseTimeHistogram.observe(
+        {
+          method: req.method,
+          route: req.route.path,
+          status_code: res.statusCode,
+        },
+        time * 1000
+      );
+    }
+  })
+);
+
+server.listen(port, async () => {
+  logger.info(`Application Server is running at http://localhost:${port}`);
+
+  const dbConnected = await connect();
+
+  if (!dbConnected) {
+    logger.warn("Running without MongoDB connection. Demo auth routes remain available.");
+  }
+
+  routes(server);
+
+  startMetricsServer();
+
+  swaggerDocs(server, port);
+});
